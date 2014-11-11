@@ -23,6 +23,7 @@ import org.un.pulse.connector.model.Document.DocumentType;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URL;
+import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -44,19 +45,25 @@ public class DocumentProcessor {
     @Autowired
     private Client searchNode;
 
+    @Autowired
+    private DocumentAnalyzer analyzer;
+
     private String indexName = "docs";
 
     public void indexDocument(Document document, String indexType) {
-        try {
-            IndexRequestBuilder indexer = searchNode.prepareIndex();
-            indexer.setId(Hashing.md5().hashBytes(document.url.getBytes()).toString());
-            indexer.setIndex(indexName);
-            indexer.setType(indexType);
-            indexer.setSource(objectMapper.writeValueAsString(document));
+        Iterable<? extends Document> analyzedDocs = analyzer.analyze(document);
+        for (Document doc : analyzedDocs) {
+            try {
+                IndexRequestBuilder indexer = searchNode.prepareIndex();
+                indexer.setId(Hashing.md5().hashBytes(document.url.getBytes()).toString());
+                indexer.setIndex(indexName);
+                indexer.setType(indexType);
+                indexer.setSource(objectMapper.writeValueAsString(document));
 
-            searchNode.index(indexer.request());
-        } catch (IOException ioe) {
-            LOGGER.error("Could not index document: " + document);
+                searchNode.index(indexer.request());
+            } catch (IOException ioe) {
+                LOGGER.error("Could not index document: " + document);
+            }
         }
     }
 

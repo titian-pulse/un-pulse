@@ -4,3 +4,4 @@ processor:
 aws:
   sqsAccessKey: <test>
   sqsSecretKey: <test>
+  queueUrl: https://sqs.us-west-1.amazonaws.com/789353145558/PdfQueue

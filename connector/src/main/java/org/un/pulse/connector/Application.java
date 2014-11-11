@@ -1,5 +1,7 @@
 package org.un.pulse.connector;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.internal.StaticCredentialsProvider;
 import com.amazonaws.services.sqs.AmazonSQSAsyncClient;
 import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +12,7 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -46,9 +49,20 @@ public class Application {
     }
 
     @Bean
-    public AmazonSQSClient amazonSQSClient() {
-        return new AmazonSQSAsyncClient();
+    public AmazonSQSClient amazonSQSClient(@Value("${aws.sqsAccessKey}") final String accessKey, @Value("${aws.sqsSecretKey}") final String secretKey) {
+        return new AmazonSQSAsyncClient(new StaticCredentialsProvider(new AWSCredentials() {
+            @Override
+            public String getAWSAccessKeyId() {
+                return accessKey;
+            }
+
+            @Override
+            public String getAWSSecretKey() {
+                return secretKey;
+            }
+        }));
     }
+
     public static void main(String[] args) {
         SpringApplication application = new SpringApplication(Application.class);
         application.run(args);
