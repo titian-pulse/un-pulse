@@ -1,2 +1,8 @@
 rootProject.name = 'un-pulse'
 
+include 'ui'
+
+include 'workflow'
+
+include 'connector'
+
