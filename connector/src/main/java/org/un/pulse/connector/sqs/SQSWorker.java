@@ -16,6 +16,7 @@ import org.elasticsearch.node.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.un.pulse.connector.model.Document;
 import org.un.pulse.connector.model.Document.DocumentType;
@@ -31,10 +32,12 @@ import java.net.URL;
  * Time: 11:16 AM
  */
 @Component
+@ConfigurationProperties(prefix = "aws")
 public class SQSWorker {
     private static Logger LOGGER = LoggerFactory.getLogger(SQSWorker.class);
 
 
-
+    private String sqsAccessKey;
+    private String sqsSecretKey;
 
 }

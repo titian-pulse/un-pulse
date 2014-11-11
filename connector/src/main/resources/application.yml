@@ -1,2 +1,6 @@
 processor:
   indexName: docs
+
+aws:
+  sqsAccessKey: <test>
+  sqsSecretKey: <test>

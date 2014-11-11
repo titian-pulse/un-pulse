@@ -1,5 +1,7 @@
 package org.un.pulse.connector;
 
+import com.amazonaws.services.sqs.AmazonSQSAsyncClient;
+import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -10,6 +12,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +25,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableAutoConfiguration
+@EnableConfigurationProperties
 @ComponentScan
 public class Application {
 
@@ -41,6 +45,10 @@ public class Application {
                 .addTransportAddress(new InetSocketTransportAddress("54.67.12.145", 9300));
     }
 
+    @Bean
+    public AmazonSQSClient amazonSQSClient() {
+        return new AmazonSQSAsyncClient();
+    }
     public static void main(String[] args) {
         SpringApplication application = new SpringApplication(Application.class);
         application.run(args);
