@@ -5,5 +5,5 @@ package org.un.pulse.connector.model;
  */
 public class AnalyzedDocument extends Document {
 
-    public double sentiment;
+    public String sentiment;
 }
