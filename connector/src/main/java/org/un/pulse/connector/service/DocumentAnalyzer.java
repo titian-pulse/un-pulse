@@ -9,6 +9,7 @@ import edu.stanford.nlp.sentiment.SentimentCoreAnnotations;
 import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.util.CoreMap;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.google.common.collect.Lists;
 import org.springframework.stereotype.Component;
 import org.un.pulse.connector.model.AnalyzedDocument;
 import org.un.pulse.connector.model.Document;

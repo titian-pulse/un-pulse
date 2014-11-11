@@ -52,10 +52,13 @@ public class DocumentProcessor {
 
     public void indexDocument(Document document, String indexType) {
         Iterable<Document> analyzedDocs = analyzer.analyze(document);
+
+        int segment = 0;
         for (Document doc : analyzedDocs) {
             try {
+                doc.segment = segment;
                 IndexRequestBuilder indexer = searchNode.prepareIndex();
-                indexer.setId(Hashing.md5().hashBytes(document.url.getBytes()).toString());
+                indexer.setId(Hashing.md5().hashBytes((Integer.toString(++segment) + document.url).getBytes()).toString());
                 indexer.setIndex(indexName);
                 indexer.setType(indexType);
                 indexer.setSource(objectMapper.writeValueAsString(document));

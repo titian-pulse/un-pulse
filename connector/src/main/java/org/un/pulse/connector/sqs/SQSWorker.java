@@ -45,8 +45,6 @@ import java.util.Collection;
 public class SQSWorker implements CommandLineRunner {
     private static Logger LOGGER = LoggerFactory.getLogger(SQSWorker.class);
 
-    private String sqsAccessKey;
-    private String sqsSecretKey;
     private String queueUrl;
 
     @Autowired
@@ -63,7 +61,7 @@ public class SQSWorker implements CommandLineRunner {
         while (true) {
             try {
                 ReceiveMessageRequest request = new ReceiveMessageRequest();
-                request.withWaitTimeSeconds(30).withQueueUrl(queueUrl).withMaxNumberOfMessages(10);
+                request.withWaitTimeSeconds(20).withQueueUrl(queueUrl).withMaxNumberOfMessages(10);
                 ReceiveMessageResult messages = sqsClient.receiveMessage(request);
 
                 if (messages != null && messages.getMessages() != null && !messages.getMessages().isEmpty()) {
@@ -72,9 +70,14 @@ public class SQSWorker implements CommandLineRunner {
 
                     int i = 0;
                     for (Message message : messages.getMessages()) {
-                        DocumentReference reference = objectMapper.readValue(message.getBody(), DocumentReference.class);
-                        Document document = documentProcessor.parseDocument(reference);
-                        documentProcessor.indexDocument(document, reference.index);
+                        try {
+                            DocumentReference reference = objectMapper.readValue(message.getBody(), DocumentReference.class);
+                            Document document = documentProcessor.parseDocument(reference);
+                            documentProcessor.indexDocument(document, reference.index);
+                        } catch (Exception e) {
+                            LOGGER.error("Failed processing message: " + message.getBody());
+                            continue;
+                        }
                         deleteEntries.add(new DeleteMessageBatchRequestEntry(Integer.toString(++i), message.getReceiptHandle()));
                     }
 

@@ -15,6 +15,7 @@ public class Document {
     public String url;
     public String text;
     public String title;
+    public int segment;
 
     @Override
     public String toString() {
