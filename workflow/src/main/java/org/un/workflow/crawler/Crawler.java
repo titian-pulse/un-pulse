@@ -1,4 +1,4 @@
-package org.unpulse.workflow.crawler;
+package org.un.workflow.crawler;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package org.unpulse;
+package org.un.pulse.ui;
 
 /**
  * Created by earaya on 11/11/14.

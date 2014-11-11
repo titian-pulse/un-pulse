@@ -1,4 +1,4 @@
-package org.unpulse;
+package org.un.pulse.ui;
 
 import org.springframework.stereotype.Controller;
 
