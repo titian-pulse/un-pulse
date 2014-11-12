@@ -1,6 +1,9 @@
 package org.un.pulse.connector.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.neural.rnn.RNNCoreAnnotations;
 import edu.stanford.nlp.pipeline.Annotation;
@@ -46,7 +49,7 @@ public class DocumentAnalyzer {
 
         String[] sentimentText = { "Very Negative","Negative", "Neutral", "Positive", "Very Positive"};
 
-        List<String> documentChuncks = splitDocumentText(document.text);
+        Iterable<String> documentChuncks = splitDocumentText(document.text);
 
         for (String documentChunk : documentChuncks) {
             Annotation annotation = nlp.process(documentChunk);
@@ -63,27 +66,14 @@ public class DocumentAnalyzer {
         return analyzedDocuments;
     }
 
-    private List<String> splitDocumentText(String text) {
-        List<String> chunks = Lists.newArrayList();
+    private Iterable<String> splitDocumentText(String text) {
+        Iterable<String> words = Splitter.on(" ").omitEmptyStrings().split(text);
+        Iterable<List<String>> lists = Iterables.partition(words, 50);
 
-        StringBuilder builder = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(text.getBytes())))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (WHITESPACE.matcher(line).matches()) {
-                    String chunk = builder.toString();
-                    if (chunk.length() > 0) {
-                        chunks.add(chunk);
-                    }
-                    builder = new StringBuilder();
-                } else {
-                    builder.append(line);
-                    builder.append("\n");
-                }
-            }
-        } catch (IOException ioe) {
-            throw new IllegalArgumentException("Error splitting document", ioe);
-        };
+        List<String> chunks = Lists.newArrayList();
+        for (List<String> list : lists) {
+            chunks.add(Joiner.on(" ").join(list));
+        }
 
         return chunks;
     }

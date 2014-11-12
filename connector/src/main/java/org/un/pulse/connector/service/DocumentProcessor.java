@@ -54,6 +54,7 @@ public class DocumentProcessor {
         if (document == null) {
             return;
         }
+        long start = System.currentTimeMillis();
         Iterable<Document> analyzedDocs = analyzer.analyze(document);
 
         int segment = 0;

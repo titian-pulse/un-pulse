@@ -63,54 +63,39 @@ public class SQSWorker implements CommandLineRunner {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private ExecutorService executorService;
-
     @Override
     public void run(String... args) throws Exception {
-        executorService = Executors.newFixedThreadPool(workerCount);
+        while (true) {
+            try {
+                ReceiveMessageRequest request = new ReceiveMessageRequest();
+                request.withWaitTimeSeconds(20).withQueueUrl(queueUrl).withMaxNumberOfMessages(1);
+                ReceiveMessageResult messages = sqsClient.receiveMessage(request);
 
-        List<Future<Object>> calls = Lists.newArrayList();
-        for (int count = 0; count < workerCount; count++) {
-            calls.add(executorService.submit(new Callable<Object>() {
-                @Override
-                public Object call() {
-                    while (true) {
+                if (messages != null && messages.getMessages() != null && !messages.getMessages().isEmpty()) {
+                    DeleteMessageBatchRequest deleteMessageBatchRequest = new DeleteMessageBatchRequest().withQueueUrl(queueUrl);
+                    Collection<DeleteMessageBatchRequestEntry> deleteEntries = Lists.newArrayList();
+
+                    int i = 0;
+                    for (Message message : messages.getMessages()) {
                         try {
-                            ReceiveMessageRequest request = new ReceiveMessageRequest();
-                            request.withWaitTimeSeconds(20).withQueueUrl(queueUrl).withMaxNumberOfMessages(1);
-                            ReceiveMessageResult messages = sqsClient.receiveMessage(request);
-
-                            if (messages != null && messages.getMessages() != null && !messages.getMessages().isEmpty()) {
-                                DeleteMessageBatchRequest deleteMessageBatchRequest = new DeleteMessageBatchRequest().withQueueUrl(queueUrl);
-                                Collection<DeleteMessageBatchRequestEntry> deleteEntries = Lists.newArrayList();
-
-                                int i = 0;
-                                for (Message message : messages.getMessages()) {
-                                    try {
-                                        DocumentReference reference = objectMapper.readValue(message.getBody(), DocumentReference.class);
-                                        Document document = documentProcessor.parseDocument(reference);
-                                        documentProcessor.indexDocument(document, reference.index);
-                                    } catch (Exception e) {
-                                        LOGGER.error("Failed processing message: " + message.getBody());
-                                        continue;
-                                    }
-                                    deleteEntries.add(new DeleteMessageBatchRequestEntry(Integer.toString(++i), message.getReceiptHandle()));
-                                }
-
-                                sqsClient.deleteMessageBatch(deleteMessageBatchRequest.withEntries(deleteEntries));
-                                LOGGER.info("Processed " + i + " messages from SQS");
-                            }
+                            DocumentReference reference = objectMapper.readValue(message.getBody(), DocumentReference.class);
+                            Document document = documentProcessor.parseDocument(reference);
+                            documentProcessor.indexDocument(document, reference.index);
                         } catch (Exception e) {
-                            LOGGER.error("Caught exception trying to proccess messages from SQS", e);
+                            LOGGER.error("Failed processing message: " + message.getBody());
+                            continue;
                         }
+                        deleteEntries.add(new DeleteMessageBatchRequestEntry(Integer.toString(++i), message.getReceiptHandle()));
                     }
+
+                    sqsClient.deleteMessageBatch(deleteMessageBatchRequest.withEntries(deleteEntries));
+                    LOGGER.info("Processed " + i + " messages from SQS");
                 }
-            }));
+            } catch (Exception e) {
+                LOGGER.error("Caught exception trying to proccess messages from SQS", e);
+            }
         }
-        for (Future<Object> future : calls) {
-            future.get();
-        }
-        executorService.shutdown();
+
     }
 
     public String getQueueUrl() {
