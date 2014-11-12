@@ -90,7 +90,7 @@ public class DocumentProcessor {
 
         PDDocument doc = null;
         try {
-            doc = new PDDocument().load(response.getEntity().getContent());
+            doc = PDDocument.load(response.getEntity().getContent());
 
             StringWriter writer = new StringWriter();
             new PDFTextStripper().writeText(doc, writer);
