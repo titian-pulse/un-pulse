@@ -14,9 +14,14 @@ import org.springframework.stereotype.Component;
 import org.un.pulse.connector.model.AnalyzedDocument;
 import org.un.pulse.connector.model.Document;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 /**
  * Created by earaya on 11/11/14.
@@ -24,6 +29,7 @@ import java.util.Properties;
 @Component
 public class DocumentAnalyzer {
 
+    private static final Pattern WHITESPACE = Pattern.compile("^\\s*$");
     private final StanfordCoreNLP nlp;
 
     @Autowired
@@ -40,7 +46,7 @@ public class DocumentAnalyzer {
 
         String[] sentimentText = { "Very Negative","Negative", "Neutral", "Positive", "Very Positive"};
 
-        String [] documentChuncks = splitDocumentText(document.text);
+        List<String> documentChuncks = splitDocumentText(document.text);
 
         for (String documentChunk : documentChuncks) {
             Annotation annotation = nlp.process(documentChunk);
@@ -57,8 +63,28 @@ public class DocumentAnalyzer {
         return analyzedDocuments;
     }
 
-    private String[] splitDocumentText(String text) {
+    private List<String> splitDocumentText(String text) {
+        List<String> chunks = Lists.newArrayList();
 
-        return text.split("\\r?\\n");
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(text.getBytes())))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (WHITESPACE.matcher(line).matches()) {
+                    String chunk = builder.toString();
+                    if (chunk.length() > 0) {
+                        chunks.add(chunk);
+                    }
+                    builder = new StringBuilder();
+                } else {
+                    builder.append(line);
+                    builder.append("\n");
+                }
+            }
+        } catch (IOException ioe) {
+            throw new IllegalArgumentException("Error splitting document", ioe);
+        };
+
+        return chunks;
     }
 }
