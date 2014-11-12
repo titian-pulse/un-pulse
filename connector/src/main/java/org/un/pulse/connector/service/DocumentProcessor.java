@@ -51,6 +51,9 @@ public class DocumentProcessor {
     private String indexName = "docs";
 
     public void indexDocument(Document document, String indexType) {
+        if (document == null) {
+            return;
+        }
         Iterable<Document> analyzedDocs = analyzer.analyze(document);
 
         int segment = 0;
@@ -70,35 +73,31 @@ public class DocumentProcessor {
         }
     }
 
-    public Document parseDocument(Message sqsMessage) throws IOException {
-        DocumentReference reference = objectMapper.readValue(sqsMessage.getBody(), DocumentReference.class);
-        return parseDocument(reference);
-    }
-
     public Document parseDocument(DocumentReference reference) throws IOException {
-        String doc = getPDFText(new URL(reference.url));
-
-        Document docModel = new Document();
-        docModel.type = reference.type;
-        docModel.text = doc;
-        docModel.url = reference.url;
-        docModel.title = "TODO";
-
-
-
-        return docModel;
+        return getDocumentForPDF(new URL(reference.url));
     }
 
-    private String getPDFText(URL url) throws IOException {
+    private Document getDocumentForPDF(URL url) throws IOException {
         HttpGet get = new HttpGet(url.toString());
 
         HttpResponse response = client.execute(new HttpHost(url.getHost()), get);
+        if (response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500) {
+            return null;
+        }
+        Document docModel = new Document();
+        docModel.type = DocumentType.pdf;
+        docModel.url = url.toString();
+
         PDDocument doc = null;
         try {
             doc = new PDDocument().load(response.getEntity().getContent());
+
             StringWriter writer = new StringWriter();
             new PDFTextStripper().writeText(doc, writer);
-            return writer.toString();
+            docModel.text = writer.toString();
+
+            docModel.title = doc.getDocumentInformation().getTitle();
+            return docModel;
         } finally {
             if (doc != null) {
                 doc.close();
