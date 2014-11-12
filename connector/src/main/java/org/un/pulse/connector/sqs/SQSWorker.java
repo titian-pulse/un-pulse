@@ -29,10 +29,13 @@ import org.un.pulse.connector.model.Document.DocumentType;
 import org.un.pulse.connector.service.DocumentProcessor;
 import org.un.pulse.connector.service.DocumentProcessor.DocumentReference;
 
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.Collection;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created with IntelliJ IDEA.
@@ -46,6 +49,7 @@ public class SQSWorker implements CommandLineRunner {
     private static Logger LOGGER = LoggerFactory.getLogger(SQSWorker.class);
 
     private String queueUrl;
+    private int workerCount;
 
     @Autowired
     private DocumentProcessor documentProcessor;
@@ -56,38 +60,50 @@ public class SQSWorker implements CommandLineRunner {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private ExecutorService executorService;
+
     @Override
     public void run(String... args) throws Exception {
-        while (true) {
-            try {
-                ReceiveMessageRequest request = new ReceiveMessageRequest();
-                request.withWaitTimeSeconds(20).withQueueUrl(queueUrl).withMaxNumberOfMessages(10);
-                ReceiveMessageResult messages = sqsClient.receiveMessage(request);
+        executorService = Executors.newFixedThreadPool(workerCount);
 
-                if (messages != null && messages.getMessages() != null && !messages.getMessages().isEmpty()) {
-                    DeleteMessageBatchRequest deleteMessageBatchRequest = new DeleteMessageBatchRequest().withQueueUrl(queueUrl);
-                    Collection<DeleteMessageBatchRequestEntry> deleteEntries = Lists.newArrayList();
-
-                    int i = 0;
-                    for (Message message : messages.getMessages()) {
+        for (int count = 0; count < workerCount; count++) {
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
                         try {
-                            DocumentReference reference = objectMapper.readValue(message.getBody(), DocumentReference.class);
-                            Document document = documentProcessor.parseDocument(reference);
-                            documentProcessor.indexDocument(document, reference.index);
-                        } catch (Exception e) {
-                            LOGGER.error("Failed processing message: " + message.getBody());
-                            continue;
-                        }
-                        deleteEntries.add(new DeleteMessageBatchRequestEntry(Integer.toString(++i), message.getReceiptHandle()));
-                    }
+                            ReceiveMessageRequest request = new ReceiveMessageRequest();
+                            request.withWaitTimeSeconds(20).withQueueUrl(queueUrl).withMaxNumberOfMessages(10);
+                            ReceiveMessageResult messages = sqsClient.receiveMessage(request);
 
-                    sqsClient.deleteMessageBatch(deleteMessageBatchRequest.withEntries(deleteEntries));
-                    LOGGER.info("Processed " + i + " messages from SQS");
+                            if (messages != null && messages.getMessages() != null && !messages.getMessages().isEmpty()) {
+                                DeleteMessageBatchRequest deleteMessageBatchRequest = new DeleteMessageBatchRequest().withQueueUrl(queueUrl);
+                                Collection<DeleteMessageBatchRequestEntry> deleteEntries = Lists.newArrayList();
+
+                                int i = 0;
+                                for (Message message : messages.getMessages()) {
+                                    try {
+                                        DocumentReference reference = objectMapper.readValue(message.getBody(), DocumentReference.class);
+                                        Document document = documentProcessor.parseDocument(reference);
+                                        documentProcessor.indexDocument(document, reference.index);
+                                    } catch (Exception e) {
+                                        LOGGER.error("Failed processing message: " + message.getBody());
+                                        continue;
+                                    }
+                                    deleteEntries.add(new DeleteMessageBatchRequestEntry(Integer.toString(++i), message.getReceiptHandle()));
+                                }
+
+                                sqsClient.deleteMessageBatch(deleteMessageBatchRequest.withEntries(deleteEntries));
+                                LOGGER.info("Processed " + i + " messages from SQS");
+                            }
+                        } catch (Exception e) {
+                            LOGGER.error("Caught exception trying to proccess messages from SQS", e);
+                        }
+                    }
                 }
-            } catch (Exception e) {
-                LOGGER.error("Caught exception trying to proccess messages from SQS", e);
-            }
+            });
         }
+        executorService.shutdown();
     }
 
     public String getQueueUrl() {
@@ -96,5 +112,13 @@ public class SQSWorker implements CommandLineRunner {
 
     public void setQueueUrl(String queueUrl) {
         this.queueUrl = queueUrl;
+    }
+
+    public int getWorkerCount() {
+        return workerCount;
+    }
+
+    public void setWorkerCount(int workerCount) {
+        this.workerCount = workerCount;
     }
 }
