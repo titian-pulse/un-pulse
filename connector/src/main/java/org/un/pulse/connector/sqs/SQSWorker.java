@@ -34,8 +34,11 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Created with IntelliJ IDEA.
@@ -66,14 +69,15 @@ public class SQSWorker implements CommandLineRunner {
     public void run(String... args) throws Exception {
         executorService = Executors.newFixedThreadPool(workerCount);
 
+        List<Future<Object>> calls = Lists.newArrayList();
         for (int count = 0; count < workerCount; count++) {
-            executorService.submit(new Runnable() {
+            calls.add(executorService.submit(new Callable<Object>() {
                 @Override
-                public void run() {
+                public Object call() {
                     while (true) {
                         try {
                             ReceiveMessageRequest request = new ReceiveMessageRequest();
-                            request.withWaitTimeSeconds(20).withQueueUrl(queueUrl).withMaxNumberOfMessages(10);
+                            request.withWaitTimeSeconds(20).withQueueUrl(queueUrl).withMaxNumberOfMessages(1);
                             ReceiveMessageResult messages = sqsClient.receiveMessage(request);
 
                             if (messages != null && messages.getMessages() != null && !messages.getMessages().isEmpty()) {
@@ -101,7 +105,10 @@ public class SQSWorker implements CommandLineRunner {
                         }
                     }
                 }
-            });
+            }));
+        }
+        for (Future<Object> future : calls) {
+            future.get();
         }
         executorService.shutdown();
     }

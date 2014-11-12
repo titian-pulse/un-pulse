@@ -59,12 +59,12 @@ public class DocumentProcessor {
         int segment = 0;
         for (Document doc : analyzedDocs) {
             try {
-                doc.segment = segment;
                 IndexRequestBuilder indexer = searchNode.prepareIndex();
                 indexer.setId(Hashing.md5().hashBytes((Integer.toString(++segment) + document.url).getBytes()).toString());
+                doc.segment = segment;
                 indexer.setIndex(indexName);
                 indexer.setType(indexType);
-                indexer.setSource(objectMapper.writeValueAsString(document));
+                indexer.setSource(objectMapper.writeValueAsString(doc));
 
                 searchNode.index(indexer.request());
             } catch (IOException ioe) {
