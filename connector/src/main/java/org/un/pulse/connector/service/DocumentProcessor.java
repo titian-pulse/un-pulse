@@ -1,17 +1,18 @@
 package org.un.pulse.connector.service;
 
-import com.amazonaws.services.sqs.model.Message;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.hash.Hashing;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.parser.PdfReaderContentParser;
+import com.itextpdf.text.pdf.parser.SimpleTextExtractionStrategy;
+import com.itextpdf.text.pdf.parser.TextExtractionStrategy;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.util.PDFTextStripper;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.inject.Inject;
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,9 +22,8 @@ import org.un.pulse.connector.model.Document;
 import org.un.pulse.connector.model.Document.DocumentType;
 
 import java.io.IOException;
-import java.io.StringWriter;
 import java.net.URL;
-import java.util.List;
+import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.
@@ -35,6 +35,8 @@ import java.util.List;
 @ConfigurationProperties(prefix = "processor")
 public class DocumentProcessor {
     private static Logger LOGGER = LoggerFactory.getLogger(DocumentProcessor.class);
+
+    private static DateTimeFormatter PDF_DATE = DateTimeFormat.forPattern("'D:'yyyyMMddHHmmssZ");
 
     @Autowired
     private HttpClient client;
@@ -56,6 +58,7 @@ public class DocumentProcessor {
         }
         long start = System.currentTimeMillis();
         Iterable<Document> analyzedDocs = analyzer.analyze(document);
+        LOGGER.info("Sentiment analysis took " + (System.currentTimeMillis() - start) + " ms");
 
         int segment = 0;
         for (Document doc : analyzedDocs) {
@@ -79,31 +82,35 @@ public class DocumentProcessor {
     }
 
     private Document getDocumentForPDF(URL url) throws IOException {
-        HttpGet get = new HttpGet(url.toString());
-
-        HttpResponse response = client.execute(new HttpHost(url.getHost()), get);
-        if (response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500) {
-            return null;
-        }
         Document docModel = new Document();
         docModel.type = DocumentType.pdf;
         docModel.url = url.toString();
 
-        PDDocument doc = null;
-        try {
-            doc = PDDocument.load(response.getEntity().getContent());
-
-            StringWriter writer = new StringWriter();
-            new PDFTextStripper().writeText(doc, writer);
-            docModel.text = writer.toString();
-
-            docModel.title = doc.getDocumentInformation().getTitle();
-            return docModel;
-        } finally {
-            if (doc != null) {
-                doc.close();
-            }
+        PdfReader reader = new PdfReader(url);
+        PdfReaderContentParser parser = new PdfReaderContentParser(reader);
+        TextExtractionStrategy strategy;
+        for (int i = 1; i <= reader.getNumberOfPages(); i++) {
+            strategy = parser.processContent(i, new SimpleTextExtractionStrategy());
+            docModel.text = strategy.getResultantText();
         }
+
+        Map<String, String> info = reader.getInfo();
+        String dateStr = info.get("CreationDate");
+        DateTime date = PDF_DATE.parseDateTime(dateStr.replace("'", ""));
+        docModel.createDate = ISODateTimeFormat.dateTime().print(date);
+
+        return docModel;
+    }
+
+    /**
+     * Parses a PDF to a plain text file.
+     * @param pdf the original PDF
+     * @param txt the resulting text
+     * @throws IOException
+     */
+    public void parsePdf(String pdf, String txt) throws IOException {
+
+
     }
 
     /**

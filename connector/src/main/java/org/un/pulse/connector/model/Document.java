@@ -16,6 +16,7 @@ public class Document {
     public String text;
     public String title;
     public int segment;
+    public String createDate;
 
     @Override
     public String toString() {

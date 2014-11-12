@@ -21,7 +21,7 @@ repositories {
 dependencies {
     compile 'com.amazonaws:aws-java-sdk:1.9.4'
     compile 'org.springframework.boot:spring-boot-starter-web'
-    compile 'org.apache.pdfbox:pdfbox:1.8.7'
+    compile 'com.itextpdf:itextpdf:5.5.3'
     compile 'org.elasticsearch:elasticsearch:1.4.0'
     compile 'com.google.guava:guava:18.0'
     compile 'edu.stanford.nlp:stanford-corenlp:3.4.1'
