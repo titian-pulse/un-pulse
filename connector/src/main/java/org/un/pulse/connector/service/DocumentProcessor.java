@@ -51,7 +51,7 @@ public class DocumentProcessor {
     private String indexName = "docs";
 
     public void indexDocument(Document document, String indexType) {
-        Iterable<? extends Document> analyzedDocs = analyzer.analyze(document);
+        Iterable<Document> analyzedDocs = analyzer.analyze(document);
         for (Document doc : analyzedDocs) {
             try {
                 IndexRequestBuilder indexer = searchNode.prepareIndex();
