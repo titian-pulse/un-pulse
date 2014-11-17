@@ -1,0 +1,9 @@
+crawler:
+  numberOfCrawlers: 5
+  seedUrl: http://www.un.org/
+  crawlStorageFolder: /data/crawl/root
+aws:
+  sqsAccessKey: access
+  sqsSecretKey: secret
+  queueUrl: https://sqs.us-west-1.amazonaws.com/789353145558/PdfQueue
+  dynamoTable: UrlsScanned

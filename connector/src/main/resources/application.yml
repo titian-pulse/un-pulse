@@ -2,7 +2,7 @@ processor:
   indexName: docs
 
 aws:
-  sqsAccessKey: <test>
-  sqsSecretKey: <test>
+  sqsAccessKey: AKIAJVBCJ26RHNFHVOYQ
+  sqsSecretKey: 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
   queueUrl: https://sqs.us-west-1.amazonaws.com/789353145558/PdfQueue
   workerCount: 2
